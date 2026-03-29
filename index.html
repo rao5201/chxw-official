@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>茶海虾王 (CHXW) - 官方网站 | 动态管理版</title>
+    <meta name="description" content="茶海虾王 CHXW - 融合传统与现代，致力于打造最有价值的久潮流互联网平台。">
+    <!-- 引入 Supabase JS 客户端 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* === 全局变量 === */
+        :root {
+            --ch-red: #D7000F; --ch-yellow: #FFD700; --ch-gold: #D4AF37;
+            --ch-blue: #0056A6; --ch-black: #1A1A1A; --ch-white: #FFFFFF;
+            --bg-gray: #f4f4f4; --pdd-orange: #e02e24;
+            --font-title: "Heiti SC", "Microsoft YaHei", sans-serif;
+            --font-content: "SimSun", "Songti SC", serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background-color: var(--bg-gray); color: var(--ch-black); font-family: var(--font-content); line-height: 1.6; }
+        a { text-decoration: none; color: inherit; transition: 0.3s; }
+        ul { list-style: none; }
+        img { max-width: 100%; height: auto; display: block; }
+
+        /* === 导航栏 === */
+        .navbar {
+            background: var(--ch-black); color: var(--ch-yellow);
+            padding: 0; position: sticky; top: 0; z-index: 1000;
+            border-bottom: 4px solid var(--ch-red);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .nav-container {
+            max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo-area {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 20px; background: rgba(255,255,255,0.05);
+        }
+        .logo-img {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+            border: 2px solid var(--ch-yellow);
+            background: #fff;
+        }
+        .logo-text {
+            font-family: var(--font-title); font-size: 20px; font-weight: bold;
+            color: var(--ch-red); text-shadow: 1px 1px 0 var(--ch-yellow);
+            white-space: nowrap;
+        }
+        .nav-menu { display: flex; overflow-x: auto; flex: 1; scrollbar-width: none; }
+        .nav-menu::-webkit-scrollbar { display: none; }
+        .nav-item {
+            flex: 0 0 auto; padding: 15px 12px; font-family: var(--font-title);
+            font-size: 14px; color: #ddd; border-right: 1px solid #333;
+            cursor: pointer; white-space: nowrap;
+        }
+        .nav-item:hover, .nav-item.active { background: var(--ch-red); color: var(--ch-white); }
+        
+        /* === 通用板块样式 === */
+        .module-section {
+            background: var(--ch-white);
+            margin: 20px auto;
+            max-width: 1400px;
+            padding: 40px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            scroll-margin-top: 60px;
+        }
+        .module-title {
+            font-family: var(--font-title); font-size: 28px; color: var(--ch-black);
+            border-left: 6px solid var(--ch-red); padding-left: 15px; margin-bottom: 30px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+        }
+        .module-tag { font-size: 12px; background: #eee; padding: 4px 8px; border-radius: 4px; color: #666; font-family: var(--font-title); }
+        
+        /* 网格系统 */
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        .grid-5 { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+
+        /* 卡片样式 */
+        .card {
+            background: #fff; border: 1px solid #e0e0e0; border-radius: 6px;
+            padding: 20px; transition: 0.3s; position: relative; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); border-color: var(--ch-gold); }
+        .card h3 { font-family: var(--font-title); font-size: 18px; margin-bottom: 10px; color: var(--ch-blue); }
+        .card p { font-size: 14px; color: #555; margin-bottom: 15px; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-btn { display: inline-block; background: var(--ch-black); color: #fff; padding: 6px 15px; border-radius: 4px; font-size: 12px; font-family: var(--font-title); text-align: center;}
+        .card-btn:hover { background: var(--ch-red); }
+
+        /* === 首页 IP 查询组件 === */
+        .ip-hero-section {
+            background: linear-gradient(135deg, var(--ch-blue), var(--ch-black));
+            color: var(--ch-white);
+            padding: 80px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border-radius: 0 0 20px 20px;
+            margin-bottom: 30px;
+        }
+        .hero-bg-logo {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px; opacity: 0.05; pointer-events: none;
+            filter: grayscale(100%) brightness(200%);
+        }
+        .ip-container {
+            background: rgba(255,255,255,0.95); color: #333;
+            max-width: 500px; margin: 30px auto; padding: 30px;
+            border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative; z-index: 2;
+        }
+        .ip-display { font-size: 32px; font-weight: bold; color: var(--ch-red); font-family: monospace; margin: 15px 0; cursor: pointer; }
+        .ip-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; font-size: 14px; margin-top: 15px; }
+        .ip-label { color: #666; font-family: var(--font-title); }
+        .ip-value { font-weight: bold; color: #333; text-align: right; }
+        .ip-refresh { margin-top: 15px; background: var(--ch-blue); color: #fff; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-family: var(--font-title); }
+
+        /* === 二级/三级分类专用样式 === */
+        .sub-nav {
+            display: flex; gap: 10px; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 10px;
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .sub-nav::-webkit-scrollbar { display: none; }
+        .sub-nav-item {
+            font-family: var(--font-title); font-size: 15px; font-weight: bold; color: #666;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: 0.3s; white-space: nowrap;
+            background: #f9f9f9; border: 1px solid #eee;
+        }
+        .sub-nav-item:hover, .sub-nav-item.active {
+            background: var(--ch-red); color: var(--ch-white); border-color: var(--ch-red);
+            box-shadow: 0 2px 8px rgba(215, 0, 15, 0.3);
+        }
+        .sub-section { animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 拼多多风格产品卡片 */
+        .product-card-pdd {
+            background: #fff; border: 1px solid #f0f0f0; border-radius: 8px;
+            overflow: hidden; transition: 0.3s; display: flex; flex-direction: column;
+        }
+        .product-card-pdd:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); border-color: var(--pdd-orange); }
+        .pdd-img-placeholder {
+            height: 160px; background: #f8f8f8; display: flex; align-items: center; justify-content: center;
+            font-size: 50px; color: #ddd; position: relative;
+        }
+        .pdd-tag {
+            position: absolute; top: 10px; left: 10px; background: var(--pdd-orange); color: #fff;
+            font-size: 10px; padding: 2px 6px; border-radius: 2px; font-family: var(--font-title);
+        }
+        .pdd-info { padding: 12px; flex: 1; display: flex; flex-direction: column; }
+        .pdd-title {
+            font-size: 14px; color: #333; font-weight: 600; margin-bottom: 8px;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+            font-family: var(--font-title);
+        }
+        .pdd-price {
+            color: var(--pdd-orange); font-size: 18px; font-weight: bold; font-family: var(--font-title);
+            margin-top: auto; display: flex; align-items: baseline;
+        }
+        .pdd-price span { font-size: 12px; margin-right: 2px; }
+        .pdd-btn {
+            background: var(--pdd-orange); color: #fff; text-align: center;
+            padding: 6px 0; border-radius: 20px; font-size: 12px; font-weight: bold;
+            margin-top: 10px; cursor: pointer; font-family: var(--font-title);
+        }
+        .pdd-btn:hover { background: #c0251c; }
+
+        /* 品牌故事专用样式 */
+        .brand-story-box {
+            display: flex; gap: 40px; align-items: center; flex-wrap: wrap;
+            background: linear-gradient(135deg, #fffbe6 0%, #fff 100%);
+            padding: 40px; border-radius: 12px; border: 1px solid var(--ch-gold);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);
+        }
+        .brand-logo-large {
+            width: 200px; height: 200px; border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            flex-shrink: 0;
+            background: #fff; padding: 10px;
+        }
+        .brand-text h3 {
+            font-family: var(--font-title); font-size: 26px; color: var(--ch-red);
+            margin-bottom: 20px; border-bottom: 2px solid var(--ch-gold); display: inline-block; padding-bottom: 5px;
+        }
+        .brand-text p { font-size: 16px; line-height: 1.8; color: #444; margin-bottom: 15px; }
+        .brand-highlight { color: var(--ch-red); font-weight: bold; }
+
+        /* 底部 */
+        .footer { background: var(--ch-black); color: #888; padding: 40px 20px; margin-top: 40px; text-align: center; }
+        .ad-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin: 20px 0; }
+        .ad-slot { background: #333; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666; cursor: pointer; font-family: var(--font-title); }
+        .ad-slot:hover { background: var(--ch-gold); color: #000; }
+        .friend-links { margin-bottom: 20px; font-size: 13px; line-height: 2; }
+        .friend-links a { margin: 0 8px; color: #aaa; }
+        .friend-links a:hover { color: var(--ch-yellow); }
+
+        /* 加载状态 */
+        .loading-state { text-align: center; padding: 40px; color: #666; font-style: italic; }
+        .error-state { text-align: center; padding: 20px; color: #d7000f; background: #ffe6e6; border-radius: 4px; }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-4, .grid-5 { grid-template-columns: repeat(2, 1fr); }
+            .nav-item { padding: 15px 8px; font-size: 12px; }
+            .ad-grid { grid-template-columns: repeat(5, 1fr); }
+            .brand-story-box { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 1. 顶部导航 -->
+<nav class="navbar">
+    <div class="nav-container">
+        <div class="logo-area">
+            <!-- 默认占位图，如有本地 logo.png 可替换 -->
+            <img src="https://via.placeholder.com/100x100/D7000F/FFD700?text=CHXW" alt="茶海虾王 Logo" class="logo-img">
+            <span class="logo-text">茶海虾王 CHXW</span>
+        </div>
+        <div class="nav-menu">
+            <a href="#home" class="nav-item active">首页</a>
+            <a href="#news" class="nav-item">中国新闻</a>
+            <a href="#products" class="nav-item">产品中心</a>
+            <a href="#tools" class="nav-item">软件工具</a>
+            <a href="#about" class="nav-item">关于我们</a>
+        </div>
+    </div>
+</nav>
+
+<!-- 首页 Hero + IP 查询 -->
+<section id="home" class="ip-hero-section">
+    <img src="https://via.placeholder.com/300x300/D7000F/FFD700?text=CHXW" alt="Background Logo" class="hero-bg-logo">
+    <h1 style="font-family:var(--font-title); font-size:36px; margin-bottom:10px; color:var(--ch-yellow); position:relative; z-index:2;">茶海虾王 (CHXW)</h1>
+    <p style="font-size:16px; opacity:0.9; position:relative; z-index:2;">融合传统茶文化与现代网络安全的久潮流互联网平台</p>
+    
+    <div class="ip-container">
+        <h3 style="font-family:var(--font-title); color:var(--ch-black);">🌐 您的网络身份查询</h3>
+        <div id="ip-result" style="min-height: 120px;">
+            <div style="color:#666; padding:20px;">🔒 正在安全定位...</div>
+        </div>
+        <button class="ip-refresh" onclick="fetchIPData()">🔄 重新查询</button>
+    </div>
+</section>
+
+<!-- 2. 中国新闻 (动态加载) -->
+<section id="news" class="module-section">
+    <h2 class="module-title">📰 中国新闻 <span class="module-tag">实时同步</span></h2>
+    <div id="news-container" class="grid-2">
+        <div class="loading-state">🔄 正在从云端加载最新新闻...</div>
+    </div>
+    <div style="text-align:center; margin-top:20px;">
+        <a href="https://news.sina.com.cn/" target="_blank" class="card-btn">查看更多资讯</a>
+    </div>
+</section>
+
+<!-- 3. 产品中心 (动态加载) -->
+<section id="products" class="module-section">
+    <h2 class="module-title">🛒 全品类产品中心 <span class="module-tag">后台直连</span></h2>
+    
+    <div class="sub-nav" id="product-tabs">
+        <!-- 动态生成 Tab -->
+        <div class="loading-state" style="width:100%">加载分类...</div>
+    </div>
+
+    <div id="product-container" class="grid-5">
+        <div class="loading-state">正在加载商品...</div>
+    </div>
+</section>
+
+<!-- 4. 软件工具 (动态加载) -->
+<section id="tools" class="module-section">
+    <h2 class="module-title">🔧 软件工具 <span class="module-tag">官方下载</span></h2>
+    <div id="tools-container" class="grid-4">
+        <div class="loading-state">正在加载工具列表...</div>
+    </div>
+</section>
+
+<!-- 5. 关于我们 (静态+品牌故事) -->
+<section id="about" class="module-section">
+    <h2 class="module-title">ℹ️ 关于我们</h2>
+    <div class="brand-story-box">
+        <img src="https://via.placeholder.com/400x400/D7000F/FFD700?text=CHXW+Logo" alt="茶海虾王品牌 Logo" class="brand-logo-large">
+        <div class="brand-text">
+            <h3>茶海虾王的由来</h3>
+            <p>
+                <span class="brand-highlight">“茶海”</span> 代表沉淀，“虾王”代表进取。
+                我们融合传统与现代，致力于打造最有价值的 <span class="brand-highlight">“久潮流”</span> 互联网平台。
+            </p>
+            <p>坚持“免费、开源、安全、高效”的服务宗旨。</p>
+            <p style="margin-top:20px; font-size:14px; color:#666;">
+                —— 海南茶海虾王管理有限责任公司 & 武穴茶海虾王电子商务中心
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- 底部 -->
+<footer class="footer">
+    <div style="max-width:1400px; margin:0 auto;">
+        <div class="ad-grid">
+            <div class="ad-slot">广告位 01</div><div class="ad-slot">广告位 02</div>
+            <div class="ad-slot">广告位 03</div><div class="ad-slot">广告位 04</div>
+            <div class="ad-slot">广告位 05</div><div class="ad-slot">广告位 06</div>
+            <div class="ad-slot">广告位 07</div><div class="ad-slot">广告位 08</div>
+            <div class="ad-slot">广告位 09</div><div class="ad-slot">广告位 10</div>
+        </div>
+        <div class="friend-links">
+            <strong style="color:var(--ch-white);">友情链接：</strong>
+            <a href="https://www.doubao.com" target="_blank">豆包</a>
+            <a href="https://tongyi.aliyun.com" target="_blank">千问</a>
+            <a href="https://github.com" target="_blank">GitHub</a>
+        </div>
+        <div style="margin-top:20px; font-size:12px; color:#666;">
+            <p>&copy; 2024 茶海虾王 (CHXW). All Rights Reserved.</p>
+            <p>技术支持：rao5201@126.com</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // ==========================================
+    // ⚙️ 【核心配置】已自动注入凭证
+    // ==========================================
+    const SUPABASE_URL = "https://bafeelbyfmsjspapvtzr.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_Vsm5CYpOSny-eYcZVEVaeA_JbGjPd-Z";
+
+    // 初始化 Supabase 客户端
+    const { createClient } = supabase;
+    const _sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ==========================================
+    // ⚙️ 【动态数据加载逻辑】
+    // ==========================================
+
+    // 1. 加载新闻
+    async function loadNews() {
+        const container = document.getElementById('news-container');
+        try {
+            // 查询 news 表，按日期倒序，限制 6 条
+            const { data, error } = await _sb.from('news')
+                .select('*')
+                .eq('is_published', true)
+                .order('date', { ascending: false })
+                .limit(6);
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="loading-state">暂无新闻，请在后台添加。</div>';
+                return;
+            }
+
+            container.innerHTML = data.map(item => `
+                <div class="card">
+                    <h3>${item.title}</h3>
+                    <p style="font-size:12px; color:#999; margin-bottom:10px;">📅 ${item.date}</p>
+                    <p>${item.desc || '点击查看详情...'}</p>
+                    <a href="${item.url}" target="_blank" class="card-btn">阅读全文</a>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error('News Error:', err);
+            container.innerHTML = `<div class="error-state">数据加载失败：${err.message}<br><small>请检查 Supabase 表结构或网络连接</small></div>`;
+        }
+    }
+
+    // 2. 加载产品
+    const categories = [
+        { id: 'digital', name: '🔒 数字安全' },
+        { id: 'agri', name: '🥬 农副产品' },
+        { id: 'auto', name: '🚗 新能源汽车' },
+        { id: 'industry', name: '🏭 生产资料' },
+        { id: 'other', name: '📦 其他产品' }
+    ];
+    
+    let currentCat = 'agri'; // 默认显示农副产品
+
+    async function loadProducts(category) {
+        const container = document.getElementById('product-container');
+        container.innerHTML = '<div class="loading-state">加载中...</div>';
+        
+        try {
+            const { data, error } = await _sb.from('products')
+                .select('*')
+                .eq('category', category)
+                .eq('is_published', true);
+
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="loading-state">该类目暂无商品，请在后台添加。</div>';
+                return;
+            }
+
+            container.innerHTML = data.map(item => `
+                <div class="product-card-pdd">
+                    <div class="pdd-img-placeholder">
+                        ${item.icon || '📦'}
+                        ${item.tag ? `<span class="pdd-tag">${item.tag}</span>` : ''}
+                    </div>
+                    <div class="pdd-info">
+                        <div class="pdd-title">${item.title}</div>
+                        <div class="pdd-price"><span>¥</span>${item.price}</div>
+                        <a href="${item.link_url || '#'}" target="_blank" class="pdd-btn">立即购买</a>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            container.innerHTML = `<div class="error-state">加载失败</div>`;
+        }
+    }
+
+    // 3. 加载工具
+    async function loadTools() {
+        const container = document.getElementById('tools-container');
+        try {
+            const { data, error } = await _sb.from('tools')
+                .select('*')
+                .eq('is_published', true)
+                .limit(8);
+            
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="loading-state">暂无工具推荐。</div>';
+                return;
+            }
+
+            container.innerHTML = data.map(item => `
+                <div class="card">
+                    <h3>${item.title}</h3>
+                    <p>${item.desc}</p>
+                    <a href="${item.download_url}" target="_blank" class="card-btn">立即下载</a>
+                </div>
+            `).join('');
+        } catch (err) {
+            container.innerHTML = `<div class="error-state">加载失败</div>`;
+        }
+    }
+
+    // ==========================================
+    // ⚙️ 【交互逻辑】
+    // ==========================================
+    
+    function initProductTabs() {
+        const tabContainer = document.getElementById('product-tabs');
+        tabContainer.innerHTML = categories.map(cat => `
+            <div class="sub-nav-item ${cat.id === currentCat ? 'active' : ''}" 
+                 onclick="switchTab('${cat.id}', this)">
+                 ${cat.name}
+            </div>
+        `).join('');
+        loadProducts(currentCat);
+    }
+
+    function switchTab(catId, el) {
+        currentCat = catId;
+        document.querySelectorAll('.sub-nav-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+        loadProducts(catId);
+    }
+
+    // IP 查询逻辑 (保持不变)
+    var CONFIG = { APIS: ['https://ipapi.co/json/', 'https://ipwho.is/'], TIMEOUT_MS: 3000 };
+    function isValidIP(ip) { if (!ip) return false; var r = /^(\d{1,3}\.){3}\d{1,3}$/; if(r.test(ip)){ var p=ip.split('.'); for(var i=0;i<4;i++) if(parseInt(p[i])>255) return false; return true; } return false; }
+    function requestWithTimeout(url, timeout) {
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest(), timedOut = false;
+            var timer = setTimeout(function() { timedOut = true; xhr.abort(); reject(new Error('Timeout')); }, timeout);
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) { clearTimeout(timer); if (timedOut) return; if (xhr.status >= 200 && xhr.status < 300) { try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(new Error('Invalid JSON')); } } else { reject(new Error('HTTP ' + xhr.status)); } }
+            };
+            xhr.onerror = function() { clearTimeout(timer); if (!timedOut) reject(new Error('Network Error')); };
+            xhr.send();
+        });
+    }
+    function fetchIPData() {
+        var resultDiv = document.getElementById('ip-result');
+        resultDiv.innerHTML = '<div style="color:#666; padding:20px;">🔒 正在安全定位...</div>';
+        var apiIndex = 0;
+        function tryNextApi() {
+            if (apiIndex >= CONFIG.APIS.length) { resultDiv.innerHTML = '<div style="color:red;">查询失败</div>'; return; }
+            requestWithTimeout(CONFIG.APIS[apiIndex], CONFIG.TIMEOUT_MS)
+                .then(function(data) {
+                    var ip = data.ip || data.query || '';
+                    if (!isValidIP(ip)) throw new Error('Invalid IP');
+                    var city = data.city || data.city_name || '未知';
+                    var isp = data.org || data.isp || '未知';
+                    var country = data.country_name || '未知';
+                    resultDiv.innerHTML = `<div class="ip-display" title="点击复制" onclick="navigator.clipboard.writeText('${ip}');alert('IP 已复制')">📍 ${ip}</div><div class="ip-info-grid"><div class="ip-label">归属地:</div><div class="ip-value">${country} ${city}</div><div class="ip-label">运营商:</div><div class="ip-value">${isp}</div></div>`;
+                })
+                .catch(function() { apiIndex++; tryNextApi(); });
+        }
+        tryNextApi();
+    }
+
+    // 启动初始化
+    window.addEventListener('DOMContentLoaded', () => {
+        console.log("🚀 茶海虾王系统启动... 连接 Supabase:", SUPABASE_URL);
+        fetchIPData();
+        loadNews();
+        initProductTabs();
+        loadTools();
+    });
+
+</script>
+
+</body>
+</html>
