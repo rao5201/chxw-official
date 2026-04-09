@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>茶海虾王 - 内容管理系统 | AI 自动处理</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {margin:0; padding:0; box-sizing:border-box; font-family: 'Microsoft YaHei', sans-serif;}
+        body {background: linear-gradient(135deg, #0a192f, #172a45); color:#e6f1ff; padding:2rem;}
+        .container {max-width:1400px; margin:0 auto;}
+        
+        .header {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #D7000F, #D4AF37);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(215, 0, 15, 0.3);
+        }
+        .header h1 {font-size: 2rem; margin-bottom: 0.5rem;}
+        .header p {opacity: 0.9;}
+        
+        .tabs {display: flex; gap: 1rem; margin-bottom: 2rem;}
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            background: #172a45;
+            border: 2px solid #233554;
+            color: #8892b0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: 0.3s;
+        }
+        .tab-btn.active {
+            background: #D7000F;
+            border-color: #D7000F;
+            color: #fff;
+        }
+        .tab-btn:hover {transform: translateY(-2px);}
+        
+        .panel {
+            background: #172a45;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: none;
+        }
+        .panel.active {display: block;}
+        
+        .form-group {margin-bottom: 1.5rem;}
+        .form-group label {
+            display: block;
+            color: #64ffda;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.8rem;
+            background: #0a192f;
+            border: 1px solid #233554;
+            border-radius: 6px;
+            color: #e6f1ff;
+            font-size: 1rem;
+        }
+        .form-group textarea {min-height: 120px; resize: vertical;}
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #64ffda;
+        }
+        
+        .btn {
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #D7000F, #D4AF37);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-right: 1rem;
+        }
+        .btn:hover {transform: translateY(-2px); box-shadow: 0 4px 15px rgba(215, 0, 15, 0.4);}
+        .btn-secondary {background: #233554;}
+        
+        .ai-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #64ffda, #0056A6);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        
+        .data-list {
+            margin-top: 2rem;
+        }
+        .data-item {
+            background: #0a192f;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #64ffda;
+        }
+        .data-item h4 {color: #64ffda; margin-bottom: 0.5rem;}
+        .data-item p {color: #8892b0; font-size: 0.9rem;}
+        
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            display: none;
+        }
+        .status.success {background: #1b4332; color: #95d5b2; display: block;}
+        .status.error {background: #6b1c1c; color: #fca5a5; display: block;}
+        
+        .ai-processing {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #64ffda;
+        }
+        .ai-processing::before {
+            content: '⚙️';
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {100% {transform: rotate(360deg);}}
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: #0a192f;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 2rem;
+            color: #64ffda;
+            font-weight: bold;
+        }
+        .stat-card .label {
+            color: #8892b0;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 茶海虾王内容管理系统</h1>
+            <p>产品上传 · 新闻发布 · AI 自动处理 · 智能生成</p>
+        </div>
+        
+        <!-- 统计卡片 -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number" id="news-count">-</div>
+                <div class="label">📰 新闻总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="products-count">-</div>
+                <div class="label">🛒 产品总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="tools-count">-</div>
+                <div class="label">🔧 工具总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="ai-count">-</div>
+                <div class="label">🤖 AI 处理次数</div>
+            </div>
+        </div>
+        
+        <!-- 选项卡 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('products')">🛒 产品管理</button>
+            <button class="tab-btn" onclick="switchTab('news')">📰 新闻管理</button>
+            <button class="tab-btn" onclick="switchTab('tools')">🔧 工具管理</button>
+            <button class="tab-btn" onclick="switchTab('ai')">🤖 AI 自动处理</button>
+        </div>
+        
+        <!-- 产品管理面板 -->
+        <div id="products-panel" class="panel active">
+            <h2 style="color:#64ffda; margin-bottom:1.5rem;">🛒 上传产品</h2>
+            <div class="form-group">
+                <label>产品名称 *</label>
+                <input type="text" id="product-title" placeholder="输入产品名称">
+            </div>
+            <div class="form-group">
+                <label>价格 (¥) *</label>
+                <input type="number" id="product-price" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>产品分类 *</label>
+                <select id="product-category">
+                    <option value="digital">🔒 数字安全</option>
+                    <option value="agri">🥬 农副产品</option>
+                    <option value="auto">🚗 新能源汽车</option>
+                    <option value="industry">🏭 生产资料</option>
+                    <option value="other">📦 其他产品</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>产品图标（Emoji）</label>
+                <input type="text" id="product-icon" placeholder="例如：🍵, 🔒, 🚗">
+            </div>
+            <div class="form-group">
+                <label>促销标签</label>
+                <input type="text" id="product-tag" placeholder="例如：新品，热销，爆款">
+            </div>
+            <div class="form-group">
+                <label>购买链接</label>
+                <input type="url" id="product-link" placeholder="https://...">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="product-published" checked> 立即发布
+                </label>
+            </div>
+            <button class="btn" onclick="addProduct()">📤 上传产品</button>
+            <button class="btn btn-secondary" onclick="clearProductForm()">🗑️ 清空表单</button>
+            <div id="product-status" class="status"></div>
+        </div>
+        
+        <!-- 新闻管理面板 -->
+        <div id="news-panel" class="panel">
+            <h2 style="color:#64ffda; margin-bottom:1.5rem;">📰 发布新闻</h2>
+            <div class="form-group">
+                <label>新闻标题 *</label>
+                <input type="text" id="news-title" placeholder="输入新闻标题">
+            </div>
+            <div class="form-group">
+                <label>新闻描述</label>
+                <textarea id="news-desc" placeholder="简要描述新闻内容"></textarea>
+            </div>
+            <div class="form-group">
+                <label>新闻链接 *</label>
+                <input type="url" id="news-url" placeholder="https://...">
+            </div>
+            <div class="form-group">
+                <label>发布日期</label>
+                <input type="date" id="news-date">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="news-published" checked> 立即发布
+                </label>
+            </div>
+            <button class="btn" onclick="addNews()">📤 发布新闻</button>
+            <button class="btn btn-secondary" onclick="clearNewsForm()">🗑️ 清空表单</button>
+            <div id="news-status" class="status"></div>
+        </div>
+        
+        <!-- 工具管理面板 -->
+        <div id="tools-panel" class="panel">
+            <h2 style="color:#64ffda; margin-bottom:1.5rem;">🔧 添加工具</h2>
+            <div class="form-group">
+                <label>工具名称 *</label>
+                <input type="text" id="tool-title" placeholder="输入工具名称">
+            </div>
+            <div class="form-group">
+                <label>工具描述</label>
+                <textarea id="tool-desc" placeholder="描述工具功能"></textarea>
+            </div>
+            <div class="form-group">
+                <label>下载链接 *</label>
+                <input type="url" id="tool-url" placeholder="https://...">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="tool-published" checked> 立即发布
+                </label>
+            </div>
+            <button class="btn" onclick="addTool()">📤 添加工具</button>
+            <button class="btn btn-secondary" onclick="clearToolForm()">🗑️ 清空表单</button>
+            <div id="tool-status" class="status"></div>
+        </div>
+        
+        <!-- AI 自动处理面板 -->
+        <div id="ai-panel" class="panel">
+            <h2 style="color:#64ffda; margin-bottom:1.5rem;">
+                🤖 AI 自动处理 <span class="ai-badge">智能生成</span>
+            </h2>
+            
+            <div class="form-group">
+                <label>AI 功能选择</label>
+                <select id="ai-function">
+                    <option value="generate-news">📰 自动生成新闻摘要</option>
+                    <option value="optimize-product">🛒 优化产品描述</option>
+                    <option value="categorize">🏷️ 自动分类产品</option>
+                    <option value="seo">🔍 SEO 优化标题</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>输入内容</label>
+                <textarea id="ai-input" placeholder="输入原始内容，AI 将自动处理..."></textarea>
+            </div>
+            
+            <button class="btn" onclick="processAI()">🤖 开始 AI 处理</button>
+            <div id="ai-status" class="status"></div>
+            
+            <div id="ai-result" style="margin-top:2rem; display:none;">
+                <h3 style="color:#64ffda; margin-bottom:1rem;">AI 处理结果</h3>
+                <div id="ai-output" style="background:#0a192f; padding:1.5rem; border-radius:8px; white-space: pre-wrap;"></div>
+            </div>
+        </div>
+        
+        <!-- 数据列表 -->
+        <div class="data-list">
+            <h3 style="color:#64ffda; margin-bottom:1rem;">📊 最新数据</h3>
+            <div id="data-container">
+                <p style="color:#8892b0;">加载中...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Supabase 配置
+        const SUPABASE_URL = "https://bafeelbyfmsjspapvtzr.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_Vsm5CYpOSny-eYcZVEVaeA_JbGjPd-Z";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 切换选项卡
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-panel').classList.add('active');
+        }
+        
+        // 添加产品
+        async function addProduct() {
+            const title = document.getElementById('product-title').value;
+            const price = parseFloat(document.getElementById('product-price').value);
+            const category = document.getElementById('product-category').value;
+            const icon = document.getElementById('product-icon').value;
+            const tag = document.getElementById('product-tag').value;
+            const link_url = document.getElementById('product-link').value;
+            const is_published = document.getElementById('product-published').checked;
+            
+            if (!title || !price) {
+                showStatus('product-status', '请填写产品名称和价格', 'error');
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('products')
+                .insert([{ title, price, category, icon, tag, link_url, is_published }]);
+            
+            if (error) {
+                showStatus('product-status', '添加失败：' + error.message, 'error');
+            } else {
+                showStatus('product-status', '✅ 产品添加成功！', 'success');
+                clearProductForm();
+                loadStats();
+            }
+        }
+        
+        // 添加新闻
+        async function addNews() {
+            const title = document.getElementById('news-title').value;
+            const desc = document.getElementById('news-desc').value;
+            const url = document.getElementById('news-url').value;
+            const date = document.getElementById('news-date').value || new Date().toISOString().split('T')[0];
+            const is_published = document.getElementById('news-published').checked;
+            
+            if (!title || !url) {
+                showStatus('news-status', '请填写新闻标题和链接', 'error');
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('news')
+                .insert([{ title, desc, url, date, is_published }]);
+            
+            if (error) {
+                showStatus('news-status', '添加失败：' + error.message, 'error');
+            } else {
+                showStatus('news-status', '✅ 新闻发布成功！', 'success');
+                clearNewsForm();
+                loadStats();
+            }
+        }
+        
+        // 添加工具
+        async function addTool() {
+            const title = document.getElementById('tool-title').value;
+            const desc = document.getElementById('tool-desc').value;
+            const download_url = document.getElementById('tool-url').value;
+            const is_published = document.getElementById('tool-published').checked;
+            
+            if (!title || !download_url) {
+                showStatus('tool-status', '请填写工具名称和下载链接', 'error');
+                return;
+            }
+            
+            const { data, error } = await supabase
+                .from('tools')
+                .insert([{ title, desc, download_url, is_published }]);
+            
+            if (error) {
+                showStatus('tool-status', '添加失败：' + error.message, 'error');
+            } else {
+                showStatus('tool-status', '✅ 工具添加成功！', 'success');
+                clearToolForm();
+                loadStats();
+            }
+        }
+        
+        // AI 自动处理
+        async function processAI() {
+            const func = document.getElementById('ai-function').value;
+            const input = document.getElementById('ai-input').value;
+            
+            if (!input) {
+                showStatus('ai-status', '请输入要处理的内容', 'error');
+                return;
+            }
+            
+            showStatus('ai-status', '<span class="ai-processing">AI 正在处理中...</span>', 'success');
+            
+            // 模拟 AI 处理（实际可接入 AI API）
+            setTimeout(() => {
+                let result = '';
+                switch(func) {
+                    case 'generate-news':
+                        result = generateNewsAI(input);
+                        break;
+                    case 'optimize-product':
+                        result = optimizeProductAI(input);
+                        break;
+                    case 'categorize':
+                        result = categorizeAI(input);
+                        break;
+                    case 'seo':
+                        result = seoOptimizeAI(input);
+                        break;
+                }
+                
+                document.getElementById('ai-output').textContent = result;
+                document.getElementById('ai-result').style.display = 'block';
+                showStatus('ai-status', '✅ AI 处理完成！', 'success');
+                
+                // 更新 AI 处理计数
+                let aiCount = localStorage.getItem('ai_process_count') || 0;
+                aiCount++;
+                localStorage.setItem('ai_process_count', aiCount);
+                loadStats();
+            }, 1500);
+        }
+        
+        // AI 功能实现
+        function generateNewsAI(input) {
+            return `【AI 生成新闻摘要】\n\n标题：${input}\n\n摘要：${input} - 这是一条重要新闻，建议补充详细描述和背景信息。\n\n关键词：新闻，热点，资讯\n\nSEO 优化：${input} | 茶海虾王资讯中心`;
+        }
+        
+        function optimizeProductAI(input) {
+            return `【AI 优化产品描述】\n\n原始：${input}\n\n优化后：${input} - 高品质产品，值得信赖！采用先进工艺，性能卓越，性价比高，是您理想的选择。\n\n卖点提炼：\n• 品质保证\n• 性能卓越\n• 性价比高\n• 售后完善`;
+        }
+        
+        function categorizeAI(input) {
+            const categories = {
+                '茶': 'agri',
+                '食品': 'agri',
+                '软件': 'digital',
+                '安全': 'digital',
+                '汽车': 'auto',
+                '设备': 'industry'
+            };
+            
+            for (let [key, cat] of Object.entries(categories)) {
+                if (input.includes(key)) {
+                    return `【AI 自动分类】\n\n产品：${input}\n\n推荐分类：${cat}\n\n分类依据：包含关键词"${key}"`;
+                }
+            }
+            return `【AI 自动分类】\n\n产品：${input}\n\n推荐分类：other (其他产品)\n\n建议：手动指定更准确的分类`;
+        }
+        
+        function seoOptimizeAI(input) {
+            return `【AI SEO 优化】\n\n原标题：${input}\n\n优化后：${input} - 2026 最新 | 茶海虾王官方推荐\n\n关键词建议：${input}, 十大品牌，评测，价格，购买指南\n\nMeta 描述：了解${input}的详细信息，包括价格、性能、用户评价等。茶海虾王为您提供专业的产品推荐和购买指南。`;
+        }
+        
+        // 清空表单
+        function clearProductForm() {
+            document.getElementById('product-title').value = '';
+            document.getElementById('product-price').value = '';
+            document.getElementById('product-icon').value = '';
+            document.getElementById('product-tag').value = '';
+            document.getElementById('product-link').value = '';
+        }
+        
+        function clearNewsForm() {
+            document.getElementById('news-title').value = '';
+            document.getElementById('news-desc').value = '';
+            document.getElementById('news-url').value = '';
+            document.getElementById('news-date').value = '';
+        }
+        
+        function clearToolForm() {
+            document.getElementById('tool-title').value = '';
+            document.getElementById('tool-desc').value = '';
+            document.getElementById('tool-url').value = '';
+        }
+        
+        // 显示状态
+        function showStatus(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = message;
+            el.className = 'status ' + type;
+            setTimeout(() => { el.style.display = 'none'; }, 5000);
+        }
+        
+        // 加载统计
+        async function loadStats() {
+            const { count: newsCount } = await supabase.from('news').select('*', { count: 'exact', head: true });
+            const { count: productsCount } = await supabase.from('products').select('*', { count: 'exact', head: true });
+            const { count: toolsCount } = await supabase.from('tools').select('*', { count: 'exact', head: true });
+            const aiCount = localStorage.getItem('ai_process_count') || 0;
+            
+            document.getElementById('news-count').textContent = newsCount || 0;
+            document.getElementById('products-count').textContent = productsCount || 0;
+            document.getElementById('tools-count').textContent = toolsCount || 0;
+            document.getElementById('ai-count').textContent = aiCount;
+        }
+        
+        // 加载最新数据
+        async function loadData() {
+            const { data: news } = await supabase.from('news').select('*').order('date', { ascending: false }).limit(3);
+            const { data: products } = await supabase.from('products').select('*').order('created_at', { ascending: false }).limit(3);
+            
+            let html = '<h4 style="color:#64ffda; margin:1rem 0;">📰 最新新闻</h4>';
+            if (news && news.length > 0) {
+                news.forEach(item => {
+                    html += `<div class="data-item">
+                        <h4>${item.title}</h4>
+                        <p>📅 ${item.date} | 🔗 <a href="${item.url}" target="_blank" style="color:#64ffda;">查看详情</a></p>
+                    </div>`;
+                });
+            } else {
+                html += '<p style="color:#8892b0;">暂无新闻数据</p>';
+            }
+            
+            html += '<h4 style="color:#64ffda; margin:1rem 0;">🛒 最新产品</h4>';
+            if (products && products.length > 0) {
+                products.forEach(item => {
+                    html += `<div class="data-item">
+                        <h4>${item.icon || '📦'} ${item.title}</h4>
+                        <p>💰 ¥${item.price} | 📂 ${item.category} ${item.tag ? '| 🏷️ ' + item.tag : ''}</p>
+                    </div>`;
+                });
+            } else {
+                html += '<p style="color:#8892b0;">暂无产品数据</p>';
+            }
+            
+            document.getElementById('data-container').innerHTML = html;
+        }
+        
+        // 页面加载时初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadData();
+            document.getElementById('news-date').value = new Date().toISOString().split('T')[0];
+        });
+    </script>
+</body>
+</html>
